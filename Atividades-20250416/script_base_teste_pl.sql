@@ -61,75 +61,60 @@ FROM
 --------------------------------------------------
 -- criação de procedure para atualizar preço medicamentos condicionados
 -- parâmetros: percentual, valor mínimo e valor máximo do medicamento
-delimiter $$ CREATE
-OR
-REPLACE
-	PROCEDURE sp_atualizar_preco_medicamento (
-		IN p_percentual DECIMAL(4, 1),
-		IN p_preco_min DECIMAL(8, 2),
-		IN p_preco_max DECIMAL(8, 2)
-	)
-BEGIN DECLARE v_controle INT DEFAULT 0;
-
--- utilizada oara controle do cursor
-DECLARE v_custo DECIMAL(8, 2);
-
--- armazena o valor do custo do medicamento
-DECLARE v_preco_ajustado DECIMAL(8, 2);
-
--- utilizada para atualizar o valor do medicamento
-DECLARE v_medicamento INT;
-
--- id do medicamento
--- declaração do cursor
-DECLARE cursor_medicamento CURSOR FOR
-SELECT
-	m.cd_medicamento,
-	m.vl_custo
-FROM
-	medicamento m
-WHERE
-	m.vl_custo BETWEEN p_preco_min AND p_preco_max;
-
--- declaração de controle do cursor, define 1 quando fim
-DECLARE CONTINUE
-HANDLER FOR NOT FOUND
-SET
-	v_controle=1;
-
--- abrindo o cursor (execução do select associado)
-OPEN cursor_medicamento;
-
-loop_medicamento: loop
-	-- atribuindo o valor das colunas de cada linha às variáveis
-	FETCH cursor_medicamento INTO v_medicamento,
-	v_custo;
-
-	-- teste de fim de bloco do cursor
-	IF v_controle=1 THEN LEAVE loop_medicamento;
-
-	END IF;
-
-	-- processamento com as variáveis (com valores atribuídos de cada linha)
-	SET
-		v_preco_ajustado=(v_custo*(1+p_percentual/100));
-
-	-- atualiza o valor de venda do medicamento na tabela
-	UPDATE medicamento
-	SET
-		vl_venda=v_preco_ajustado
-	WHERE
-		cd_medicamento=v_medicamento;
-
-END loop;
-CLOSE cursor_medicamento;
+delimiter $$ 
+CREATE OR REPLACE PROCEDURE sp_atualizar_preco_medicamento (
+																				IN p_percentual DECIMAL(4, 1),
+																				IN p_preco_min DECIMAL(8, 2),
+																				IN p_preco_max DECIMAL(8, 2)
+																			)
+BEGIN 
+	DECLARE v_controle INT DEFAULT 0; -- utilizada oara controle do cursor
+	DECLARE v_custo DECIMAL(8, 2); -- armazena o valor do custo do medicamento
+	DECLARE v_preco_ajustado DECIMAL(8, 2); -- utilizada para atualizar o valor do medicamento
+	DECLARE v_medicamento INT; -- id do medicamento
+	-- declaração do cursor
+	DECLARE cursor_medicamento CURSOR FOR
+		SELECT
+			m.cd_medicamento,
+			m.vl_custo
+		FROM
+			medicamento m
+		WHERE
+			m.vl_custo BETWEEN p_preco_min AND p_preco_max;
+	
+	-- declaração de controle do cursor, define 1 quando fim
+	DECLARE CONTINUE HANDLER FOR NOT FOUND
+		SET v_controle=1;
+	
+	-- abrindo o cursor (execução do select associado)
+	OPEN cursor_medicamento;
+	
+	loop_medicamento: loop
+		-- atribuindo o valor das colunas de cada linha às variáveis
+		FETCH cursor_medicamento INTO v_medicamento, v_custo;
+	
+		-- teste de fim de bloco do cursor
+		IF v_controle = 1 THEN 
+			LEAVE loop_medicamento;
+		END IF;
+	
+		-- processamento com as variáveis (com valores atribuídos de cada linha)
+		SET v_preco_ajustado = (v_custo*(1+p_percentual/100));
+	
+		-- atualiza o valor de venda do medicamento na tabela
+		UPDATE medicamento
+			SET
+				vl_venda=v_preco_ajustado
+			WHERE
+				cd_medicamento=v_medicamento;
+	
+	END loop;
+	CLOSE cursor_medicamento;
 
 END $$
+
 CALL sp_atualizar_preco_medicamento (20, 11, 50);
 
-SELECT
-	*
-FROM
-	medicamento
-ORDER BY
-	vl_custo;
+SELECT * 
+FROM medicamento
+ORDER BY vl_custo;
